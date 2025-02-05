@@ -17,8 +17,20 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from users.views import PropertyCreateView , PropertyDeleteView,PropertyDetailView,PropertyUpdateView,get_properties
+from django.conf.urls.static import static
+from django.conf import settings
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('users.urls')),
+    path('api/auth/properties-create/', PropertyCreateView.as_view(), name='property-create'),
+    path('properties/', get_properties, name='get_properties'),
+    path('property/delete/<int:id>/', PropertyDeleteView.as_view(), name='delete-property'),
+    path('property/edit/<int:id>/', PropertyDetailView.as_view(), name='edit-property'),
+    path('property/update/<int:id>/', PropertyUpdateView.as_view(), name='update-property'),
+
 ]
+
+urlpatterns +=static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
