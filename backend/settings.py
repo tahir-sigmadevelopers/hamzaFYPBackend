@@ -31,7 +31,9 @@ ALLOWED_HOSTS = [".vercel.app","127.0.0.1:8000","127.0.0.1","homebidding-backend
 AUTH_USER_MODEL = 'users.CustomUser'
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",  # Replace with the actual origin of your frontend
+    "http://localhost:5173", 
+    "https://home-bidding-django.onrender.com"
+     # Replace with the actual origin of your frontend
 ]
 
 
