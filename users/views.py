@@ -8,8 +8,10 @@ from .models import CustomUser, Property, PropertyImage
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import DestroyAPIView
 from rest_framework.decorators import api_view
+from django.http import HttpResponse
 
-
+def hello_world(request):
+    return HttpResponse("Hello, World!")
 
 class SignupView(APIView):
     def post(self, request):
