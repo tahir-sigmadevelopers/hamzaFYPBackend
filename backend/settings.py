@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure--^=ht_q8f(6e0yvl03&slk)o)+q)wuc2+er-+q!wnk1+6whf^k
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [".vercel.app","127.0.0.1:8000","127.0.0.1"]
+ALLOWED_HOSTS = [".vercel.app","127.0.0.1:8000","127.0.0.1","homebidding-backend.onrender.com"]
 
 
 AUTH_USER_MODEL = 'users.CustomUser'
