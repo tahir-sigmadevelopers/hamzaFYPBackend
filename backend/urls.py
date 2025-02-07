@@ -17,7 +17,7 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
-from users.views import hello_world, PropertyCreateView , PropertyDeleteView,PropertyDetailView,PropertyUpdateView,get_properties
+from users.views import hello_world, PropertyCreateView , PropertyDeleteView,PropertyDetailView,PropertyUpdateView,get_properties, PricePredictionView
 from django.conf.urls.static import static
 from django.conf import settings
 
@@ -31,6 +31,8 @@ urlpatterns = [
     path('property/delete/<int:id>/', PropertyDeleteView.as_view(), name='delete-property'),
     path('property/edit/<int:id>/', PropertyDetailView.as_view(), name='edit-property'),
     path('property/update/<int:id>/', PropertyUpdateView.as_view(), name='update-property'),
+    path('api/predict-price/', PricePredictionView.as_view(), name='predict-price'),
+
 
 ]
 

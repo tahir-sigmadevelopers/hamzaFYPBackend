@@ -9,6 +9,12 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import DestroyAPIView
 from rest_framework.decorators import api_view
 from django.http import HttpResponse
+import joblib
+import pandas as pd
+import os
+from django.conf import settings
+
+
 
 def hello_world(request):
     return HttpResponse("Hello, World!")
@@ -117,3 +123,54 @@ class PropertyDeleteView(DestroyAPIView):
     serializer_class = PropertySerializer
     lookup_field = 'id'  # Use the 'id' field to delete a specific property
 
+
+
+
+
+class PricePredictionView(APIView):
+    def __init__(self):
+        # Define paths relative to Django project
+        model_path = os.path.join(settings.BASE_DIR, 'ml_models', 'model.pkl')
+        scaler_path = os.path.join(settings.BASE_DIR, 'ml_models', 'scaler.pkl')
+        
+        # Load the models
+        try:
+            self.model = joblib.load(model_path)
+            self.scaler = joblib.load(scaler_path)
+        except FileNotFoundError as e:
+            print(f"Error loading models: {e}")
+            raise Exception("ML models not found. Please ensure model.pkl and scaler.pkl are in the ml_models directory.")
+
+    def post(self, request):
+        try:
+            # Extract features from request
+            size = float(request.data.get('size'))
+            bedrooms = int(request.data.get('bedrooms'))
+            location = request.data.get('location', '').lower()
+
+            # Create location encoding
+            locations = ['urban', 'suburban', 'rural']
+            location_features = {f'location_{loc}': 1 if loc == location else 0 
+                               for loc in locations}
+            
+            # Create feature dataframe
+            features = pd.DataFrame({
+                'size': [size],
+                'bedrooms': [bedrooms],
+                **location_features
+            })
+            
+            # Make prediction
+            scaled_features = self.scaler.transform(features)
+            prediction = self.model.predict(scaled_features)[0]
+            
+            return Response({
+                'predicted_price': round(prediction, 2),
+                'status': 'success'
+            })
+            
+        except Exception as e:
+            return Response({
+                'error': str(e),
+                'status': 'error'
+            }, status=status.HTTP_400_BAD_REQUEST) 
