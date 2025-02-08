@@ -39,7 +39,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://localhost:3000",
     "https://hamzafyp.vercel.app",
-    "https://homebidding.vercel.app"
+    "https://homebidding.vercel.app",
+    "https://homebid-real-estate.vercel.app"
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True  # For development only
