@@ -14,8 +14,16 @@ import pandas as pd
 import os
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+import numpy as np
 
-
+try:
+    import pandas as pd
+    import joblib
+    import numpy as np
+except ImportError:
+    pd = None
+    joblib = None
+    np = None
 
 def hello_world(request):
     return HttpResponse("Hello, World!")
@@ -145,6 +153,11 @@ class PricePredictionView(APIView):
 
     def post(self, request):
         try:
+            if pd is None or joblib is None or np is None:
+                return Response({
+                    'error': 'Required libraries not available'
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+                
             # Extract features from request
             size = float(request.data.get('size'))
             bedrooms = int(request.data.get('bedrooms'))
@@ -173,8 +186,7 @@ class PricePredictionView(APIView):
             
         except Exception as e:
             return Response({
-                'error': str(e),
-                'status': 'error'
+                'error': str(e)
             }, status=status.HTTP_400_BAD_REQUEST) 
 
 
