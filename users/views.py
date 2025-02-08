@@ -3,16 +3,17 @@ from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
-from .serializers import SignupSerializer, LoginSerializer, PropertySerializer  
-from .models import CustomUser, Property, PropertyImage
+from .serializers import SignupSerializer, LoginSerializer, PropertySerializer, BidSerializer  
+from .models import CustomUser, Property, PropertyImage, Bid
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import DestroyAPIView
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from django.http import HttpResponse
 import joblib
 import pandas as pd
 import os
 from django.conf import settings
+from django.shortcuts import get_object_or_404
 
 
 
@@ -53,6 +54,8 @@ class PropertyCreateView(APIView):
 
     def post(self, request, *args, **kwargs):
         data = request.data
+        if 'predicted_price' in data:
+            data.pop('predicted_price')  # Remove predicted_price from the data
         images = request.FILES.getlist('images')  # Get multiple images
 
         property_instance = Property.objects.create(
@@ -61,7 +64,6 @@ class PropertyCreateView(APIView):
             size=data.get("size"),
             bedrooms=data.get("bedrooms"),
             bathrooms=data.get("bathrooms"),
-            predicted_price=data.get("predicted_price"),
             actual_price=data.get("actual_price"),
             owner_name=data.get("owner_name"),
             date_listed=data.get("date_listed"),
@@ -174,3 +176,195 @@ class PricePredictionView(APIView):
                 'error': str(e),
                 'status': 'error'
             }, status=status.HTTP_400_BAD_REQUEST) 
+
+
+
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def place_bid(request):
+    try:
+        property_id = request.data.get('property_id')
+        bid_amount = request.data.get('bid_amount')
+        
+        # Get the property
+        property_obj = Property.objects.get(id=property_id)
+        
+        # Validate minimum bid amount
+        min_bid = property_obj.actual_price * 1.5
+        if float(bid_amount) < min_bid:
+            return Response(
+                {'error': f'Bid must be at least {min_bid}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Check if this is the highest bid
+        highest_bid = property_obj.bids.first()
+        if highest_bid and float(bid_amount) <= highest_bid.bid_amount:
+            return Response(
+                {'error': 'Bid must be higher than the current highest bid'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create the bid
+        bid = Bid.objects.create(
+            property=property_obj,
+            bidder=request.user,
+            bid_amount=bid_amount
+        )
+        
+        serializer = BidSerializer(bid)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+    except Property.DoesNotExist:
+        return Response(
+            {'error': 'Property not found'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    serializer_class = BidSerializer
+
+    def get_queryset(self):
+        property_id = self.kwargs['property_id']
+        return Bid.objects.filter(property_id=property_id).order_by('-amount')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        highest_bid = queryset.first()
+        response_data = {
+            'highest_bid': BidSerializer(highest_bid).data if highest_bid else None,
+            'total_bids': queryset.count(),
+            'all_bids': BidSerializer(queryset, many=True).data
+        }
+        return Response(response_data)
+
+
+    serializer_class = BidSerializer
+    permission_classes = [IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        property_id = request.data.get('property')
+        amount = float(request.data.get('amount'))
+
+        property_instance = get_object_or_404(Property, id=property_id)
+        highest_bid = Bid.objects.filter(property=property_instance).order_by('-amount').first()
+
+        # Validate bid amount
+        min_increment = float(property_instance.actual_price) * 1.5
+        if highest_bid and amount <= highest_bid.amount:
+            return Response({"error": "Bid must be higher than the current highest bid"}, status=status.HTTP_400_BAD_REQUEST)
+        if amount < min_increment:
+            return Response({"error": f"Minimum bid increment is Rs. {min_increment}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create bid
+        bid = Bid.objects.create(property=property_instance, bidder=request.user, amount=amount)
+        return Response(BidSerializer(bid).data, status=status.HTTP_201_CREATED)
+
+    def get(self, request, property_id):
+        try:
+            bids = Bid.objects.filter(property_id=property_id).order_by('-amount')
+            highest_bid = bids.first()
+            
+            response_data = {
+                'highest_bid': BidSerializer(highest_bid).data if highest_bid else None,
+                'total_bids': bids.count(),
+                'all_bids': BidSerializer(bids, many=True).data
+            }
+            
+            return Response(response_data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 
+
+class PropertyBidsView(APIView):
+    def get(self, request, property_id):
+        try:
+            bids = Bid.objects.filter(property_id=property_id).order_by('-amount')
+            highest_bid = bids.first()
+            
+            response_data = {
+                'highest_bid': BidSerializer(highest_bid).data if highest_bid else None,
+                'total_bids': bids.count(),
+                'all_bids': BidSerializer(bids, many=True).data
+            }
+            
+            return Response(response_data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class PlaceBidView(APIView):
+    def post(self, request):
+        try:
+            print("Request data:", request.data)
+            
+            property_id = request.data.get('property')
+            amount = float(request.data.get('amount'))
+            
+            # Get the property
+            property_obj = get_object_or_404(Property, id=property_id)
+            
+            # Create the bid
+            bid = Bid.objects.create(
+                property=property_obj,
+                amount=amount
+            )
+            
+            return Response({
+                'message': 'Bid placed successfully',
+                'bid': BidSerializer(bid).data
+            }, status=status.HTTP_201_CREATED)
+            
+        except Property.DoesNotExist:
+            return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            print("Error:", str(e))
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 
+
+class AllBidsView(APIView):
+    def get(self, request):
+        try:
+            # Get all bids with related property and bidder info
+            bids = Bid.objects.select_related('property', 'bidder').all().order_by('-created_at')
+            
+            # Serialize with additional property info
+            bid_data = []
+            for bid in bids:
+                bid_info = {
+                    'id': bid.id,
+                    'property': bid.property.id,
+                    'property_address': bid.property.address,
+                    'amount': bid.amount,
+                    'bidder_username': bid.bidder.username if bid.bidder else 'Anonymous',
+                    'created_at': bid.created_at,
+                    'status': bid.status
+                }
+                bid_data.append(bid_info)
+            
+            return Response(bid_data)
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class BidActionView(APIView):
+    def post(self, request, bid_id, action):
+        try:
+            bid = get_object_or_404(Bid, id=bid_id)
+
+            if action == 'accept':
+                bid.status = 'accepted'
+                # Reject all other bids
+                Bid.objects.filter(property=bid.property).exclude(id=bid.id).update(status='rejected')
+            elif action == 'reject':
+                bid.status = 'rejected'
+            
+            bid.save()
+            
+            return Response({'message': f'Bid {action}ed successfully'})
+            
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 

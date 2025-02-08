@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from .models import CustomUser, Property , PropertyImage
+from .models import CustomUser, Property , PropertyImage, Bid
 
 
 class SignupSerializer(serializers.ModelSerializer):
@@ -61,3 +61,10 @@ def create(self, validated_data):
         #     PropertyImage.objects.create(property=property_instance, image=image)
 
         return property_instance
+
+
+
+class BidSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Bid
+        fields = ['id', 'property', 'amount', 'created_at']

@@ -21,7 +21,6 @@ class Property(models.Model):
     bedrooms = models.IntegerField()
     bathrooms = models.IntegerField()
     actual_price = models.IntegerField(default=0)
-    predicted_price = models.DecimalField(max_digits=10, decimal_places=2)
     owner_name = models.CharField(max_length=255, null=True, blank=True)  # New field
     date_listed = models.DateField(null=True, blank=True)  # New field
     description = models.TextField(null=True, blank=True)  # New field
@@ -32,3 +31,24 @@ class Property(models.Model):
 class PropertyImage(models.Model):
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="images")
     image = models.ImageField(upload_to="property_images/")
+
+
+
+class Bid(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    )
+    
+    property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="bids")
+    bidder = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+
+    class Meta:
+        ordering = ['-amount']
+
+    def __str__(self):
+        return f"Bid of {self.amount} on {self.property}"
