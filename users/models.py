@@ -21,9 +21,9 @@ class Property(models.Model):
     bedrooms = models.IntegerField()
     bathrooms = models.IntegerField()
     actual_price = models.IntegerField(default=0)
-    owner_name = models.CharField(max_length=255, null=True, blank=True)  # New field
-    date_listed = models.DateField(null=True, blank=True)  # New field
-    description = models.TextField(null=True, blank=True)  # New field
+    owner_name = models.CharField(max_length=255, null=True, blank=True)
+    date_listed = models.DateField(null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
     # images = models.ImageField(null=True, blank=True, upload_to=upload_path)  # New field
 
    

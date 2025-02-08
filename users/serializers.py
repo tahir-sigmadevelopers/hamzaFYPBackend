@@ -50,7 +50,19 @@ class PropertySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Property
-        exclude = ['predicted_price']
+        fields = [
+            'id', 
+            'location', 
+            'address', 
+            'size', 
+            'bedrooms', 
+            'bathrooms', 
+            'actual_price',
+            'owner_name',
+            'date_listed',
+            'description',
+            'images'
+        ]
 
 
 def create(self, validated_data):

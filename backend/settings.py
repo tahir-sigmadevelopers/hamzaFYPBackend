@@ -25,18 +25,24 @@ SECRET_KEY = 'django-insecure--^=ht_q8f(6e0yvl03&slk)o)+q)wuc2+er-+q!wnk1+6whf^k
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['hamzafypbackend.onrender.com',".vercel.app","localhost","127.0.0.1:8000","127.0.0.1","homebidding-backend.onrender.com"]
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'hamzafypbackend.onrender.com',
+    '.onrender.com'  # Allows all subdomains on onrender.com
+]
 
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
 CORS_ALLOWED_ORIGINS = [
-    "https://homebid-real-estate.vercel.app",
-    "http://localhost:5173", 
-    "https://home-bidding-django.onrender.com",
-    "https://homebidding-backend.onrender.com"  # Added backend URL
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://hamzafyp.vercel.app",
+    "https://homebidding.vercel.app"
 ]
 
+CORS_ALLOW_ALL_ORIGINS = True  # For development only
 
 CORS_ALLOW_METHODS = [
     "GET",
