@@ -50,7 +50,7 @@ class PropertySerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Property
-        fields = '__all__'
+        exclude = ['predicted_price']
 
 
 def create(self, validated_data):
