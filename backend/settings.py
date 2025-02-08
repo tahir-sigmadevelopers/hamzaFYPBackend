@@ -31,6 +31,7 @@ ALLOWED_HOSTS = ['hamzafypbackend.onrender.com',".vercel.app","localhost","127.0
 AUTH_USER_MODEL = 'users.CustomUser'
 
 CORS_ALLOWED_ORIGINS = [
+    "https://homebid-real-estate.vercel.app",
     "http://localhost:5173", 
     "https://home-bidding-django.onrender.com",
     "https://homebidding-backend.onrender.com"  # Added backend URL
