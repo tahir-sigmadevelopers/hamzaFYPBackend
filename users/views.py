@@ -34,7 +34,17 @@ class SignupView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             token, created = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key}, status=status.HTTP_201_CREATED)
+            
+            # Include user details in the response
+            return Response({
+                'token': token.key,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                }
+            }, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
@@ -44,8 +54,15 @@ class LoginView(APIView):
             user = serializer.validated_data
             token, created = Token.objects.get_or_create(user=user)
             user_name = user.username 
-            return Response({'token': token.key, 'user_name': user_name}, status=status.HTTP_200_OK)
-    
+           # Include user details in the response
+            return Response({
+                'token': token.key,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email
+                }
+            }, status=status.HTTP_201_CREATED)    
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserListView(APIView):
