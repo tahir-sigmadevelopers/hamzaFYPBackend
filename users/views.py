@@ -15,6 +15,7 @@ import os
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 import numpy as np
+from decimal import Decimal, InvalidOperation
 
 try:
     import pandas as pd
@@ -222,7 +223,7 @@ def place_bid(request):
         property_obj = Property.objects.get(id=property_id)
         
         # Validate minimum bid amount
-        min_bid = property_obj.actual_price * 1.5
+        min_bid = property_obj.actual_price*0.97
         if float(bid_amount) < min_bid:
             return Response(
                 {'error': f'Bid must be at least {min_bid}'},
@@ -333,28 +334,38 @@ class PropertyBidsView(APIView):
 class PlaceBidView(APIView):
     def post(self, request):
         try:
-            print("Request data:", request.data)
-            
             property_id = request.data.get('property')
-            amount = float(request.data.get('amount'))
-            email = request.data.get('email')  # Get email from request
-            
+            amount = request.data.get('amount')
+            email = request.data.get('email')
+
+            # Convert amount to Decimal
+            try:
+                if isinstance(amount, str):
+                    amount = Decimal(amount.replace(',', ''))
+                else:
+                    amount = Decimal(str(amount))
+            except (InvalidOperation, ValueError):
+                return Response(
+                    {'error': 'Invalid bid amount'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             # Get the property and user
             property_obj = get_object_or_404(Property, id=property_id)
-            user = get_object_or_404(CustomUser, email=email)  # Get user by email
-            
+            user = get_object_or_404(CustomUser, email=email)
+
             # Create the bid with the user
             bid = Bid.objects.create(
                 property=property_obj,
                 amount=amount,
-                bidder=user  # Set the bidder
+                bidder=user
             )
-            
+
             return Response({
                 'message': 'Bid placed successfully',
                 'bid': BidSerializer(bid).data
             }, status=status.HTTP_201_CREATED)
-            
+
         except Property.DoesNotExist:
             return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
         except CustomUser.DoesNotExist:

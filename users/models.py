@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
+from decimal import Decimal
 
 
 class CustomUser(AbstractUser):
@@ -43,7 +44,7 @@ class Bid(models.Model):
     
     property = models.ForeignKey(Property, on_delete=models.CASCADE, related_name="bids")
     bidder = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     notified = models.BooleanField(default=False)
@@ -53,3 +54,9 @@ class Bid(models.Model):
 
     def __str__(self):
         return f"Bid of {self.amount} on {self.property}"
+
+    def save(self, *args, **kwargs):
+        # Ensure amount is Decimal before saving
+        if isinstance(self.amount, str):
+            self.amount = Decimal(self.amount.replace(',', ''))
+        super().save(*args, **kwargs)
