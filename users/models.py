@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
 from decimal import Decimal
+from datetime import datetime, timedelta
+from django.utils import timezone
 
 
 class CustomUser(AbstractUser):
@@ -26,6 +28,22 @@ class Property(models.Model):
     date_listed = models.DateField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     # images = models.ImageField(null=True, blank=True, upload_to=upload_path)  # New field
+
+    @property
+    def is_bidding_closed(self):
+        if not self.date_listed:
+            return False
+        
+        # Convert date_listed to datetime if it's just a date
+        if isinstance(self.date_listed, datetime):
+            listing_date = self.date_listed
+        else:
+            listing_date = datetime.combine(self.date_listed, datetime.min.time())
+            listing_date = timezone.make_aware(listing_date)
+        
+        # Calculate end date (2 days after listing)
+        end_date = listing_date + timedelta(days=2)
+        return timezone.now() > end_date
 
    
    

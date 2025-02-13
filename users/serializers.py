@@ -49,6 +49,7 @@ class PropertyImageSerializer(serializers.ModelSerializer):
 
 class PropertySerializer(serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)
+    bidding_closed = serializers.SerializerMethodField()
     
     class Meta:
         model = Property
@@ -63,9 +64,12 @@ class PropertySerializer(serializers.ModelSerializer):
             'owner_name',
             'date_listed',
             'description',
-            'images'
+            'images',
+            'bidding_closed'
         ]
 
+    def get_bidding_closed(self, obj):
+        return obj.is_bidding_closed
 
 def create(self, validated_data):
         # images_data = self.context['request'].FILES.getlist('images')

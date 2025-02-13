@@ -314,17 +314,22 @@ def place_bid(request):
 class PropertyBidsView(APIView):
     def get(self, request, property_id):
         try:
+            property_obj = get_object_or_404(Property, id=property_id)
             bids = Bid.objects.filter(property_id=property_id).order_by('-amount')
             highest_bid = bids.first()
             
-            # Check if any bid is accepted for this property
-            has_accepted_bid = bids.filter(status='accepted').exists()
+            # Check if bidding is closed due to time or acceptance
+            bidding_closed = (
+                property_obj.is_bidding_closed or 
+                bids.filter(status='accepted').exists()
+            )
             
             response_data = {
                 'highest_bid': BidSerializer(highest_bid).data if highest_bid else None,
                 'total_bids': bids.count(),
                 'all_bids': BidSerializer(bids, many=True).data,
-                'bidding_closed': has_accepted_bid  # Add this field
+                'bidding_closed': bidding_closed,
+                'closed_reason': 'time_expired' if property_obj.is_bidding_closed else 'bid_accepted' if bidding_closed else None
             }
             
             return Response(response_data)
@@ -335,6 +340,15 @@ class PlaceBidView(APIView):
     def post(self, request):
         try:
             property_id = request.data.get('property')
+            property_obj = get_object_or_404(Property, id=property_id)
+
+            # Check if bidding is closed due to time
+            if property_obj.is_bidding_closed:
+                return Response(
+                    {'error': 'Bidding time has expired for this property'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
             amount = request.data.get('amount')
             email = request.data.get('email')
 
