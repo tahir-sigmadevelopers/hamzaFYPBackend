@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (SignupView, LoginView, UserListView, PropertyCreateView,
                    PropertyDeleteView, PropertyDetailView, PropertyUpdateView, 
-                   PlaceBidView, PropertyBidsView, BidActionView,AllBidsView)
+                   PlaceBidView, PropertyBidsView, BidActionView, AllBidsView,
+                   UserBidsView, MarkBidNotifiedView)
 
 urlpatterns = [
     # Authentication URLs
@@ -18,8 +19,8 @@ urlpatterns = [
     # Bidding URLs
     path('bids/', PlaceBidView.as_view(), name='place-bid'),
     path('property/<int:property_id>/bids/', PropertyBidsView.as_view(), name='property-bids'),
-    path('bids/<int:bid_id>/accept/', BidActionView.as_view(), {'action': 'accept'}, name='accept-bid'),
-    path('bids/<int:bid_id>/reject/', BidActionView.as_view(), {'action': 'reject'}, name='reject-bid'),
     path('bids/all/', AllBidsView.as_view(), name='all-bids'),
-
+    path('bids/<int:bid_id>/<str:action>/', BidActionView.as_view(), name='bid-action'),
+    path('bids/user/<str:email>/', UserBidsView.as_view(), name='user-bids'),
+    path('bids/<int:bid_id>/mark-notified/', MarkBidNotifiedView.as_view(), name='mark-bid-notified'),
 ]

@@ -77,6 +77,21 @@ def create(self, validated_data):
 
 
 class BidSerializer(serializers.ModelSerializer):
+    bidder_email = serializers.SerializerMethodField()
+    property_address = serializers.CharField(source='property.address')
+    notified = serializers.BooleanField()
+
     class Meta:
         model = Bid
-        fields = ['id', 'property', 'amount', 'created_at']
+        fields = ['id', 'property', 'amount', 'status', 'created_at', 
+                 'bidder_email', 'property_address', 'notified']
+
+    def get_bidder_email(self, obj):
+        return obj.bidder.email if obj.bidder else None
+
+    def create(self, validated_data):
+        email = self.context.get('email')
+        if email:
+            user = CustomUser.objects.get(email=email)
+            validated_data['bidder'] = user
+        return super().create(validated_data)

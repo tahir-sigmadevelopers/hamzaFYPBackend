@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, generics
+from rest_framework import status, generics, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 from .serializers import SignupSerializer, LoginSerializer, PropertySerializer, BidSerializer  
@@ -316,10 +316,14 @@ class PropertyBidsView(APIView):
             bids = Bid.objects.filter(property_id=property_id).order_by('-amount')
             highest_bid = bids.first()
             
+            # Check if any bid is accepted for this property
+            has_accepted_bid = bids.filter(status='accepted').exists()
+            
             response_data = {
                 'highest_bid': BidSerializer(highest_bid).data if highest_bid else None,
                 'total_bids': bids.count(),
-                'all_bids': BidSerializer(bids, many=True).data
+                'all_bids': BidSerializer(bids, many=True).data,
+                'bidding_closed': has_accepted_bid  # Add this field
             }
             
             return Response(response_data)
@@ -333,14 +337,17 @@ class PlaceBidView(APIView):
             
             property_id = request.data.get('property')
             amount = float(request.data.get('amount'))
+            email = request.data.get('email')  # Get email from request
             
-            # Get the property
+            # Get the property and user
             property_obj = get_object_or_404(Property, id=property_id)
+            user = get_object_or_404(CustomUser, email=email)  # Get user by email
             
-            # Create the bid
+            # Create the bid with the user
             bid = Bid.objects.create(
                 property=property_obj,
-                amount=amount
+                amount=amount,
+                bidder=user  # Set the bidder
             )
             
             return Response({
@@ -350,9 +357,11 @@ class PlaceBidView(APIView):
             
         except Property.DoesNotExist:
             return Response({'error': 'Property not found'}, status=status.HTTP_404_NOT_FOUND)
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             print("Error:", str(e))
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class AllBidsView(APIView):
     def get(self, request):
@@ -368,7 +377,7 @@ class AllBidsView(APIView):
                     'property': bid.property.id,
                     'property_address': bid.property.address,
                     'amount': bid.amount,
-                    'bidder_username': bid.bidder.username if bid.bidder else 'Anonymous',
+                    'bidder_email': bid.bidder.email if bid.bidder else None,
                     'created_at': bid.created_at,
                     'status': bid.status
                 }
@@ -383,17 +392,86 @@ class BidActionView(APIView):
     def post(self, request, bid_id, action):
         try:
             bid = get_object_or_404(Bid, id=bid_id)
+            
+            # Validate the action
+            if action not in ['accept', 'reject', 'pending']:
+                return Response(
+                    {'error': 'Invalid action'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
+            # If accepting a bid, reject all other bids for the same property
             if action == 'accept':
                 bid.status = 'accepted'
-                # Reject all other bids
-                Bid.objects.filter(property=bid.property).exclude(id=bid.id).update(status='rejected')
+                # Reject all other bids for this property
+                Bid.objects.filter(property=bid.property).exclude(id=bid.id).update(
+                    status='rejected',
+                    notified=False  # Reset notification status for rejected bids
+                )
             elif action == 'reject':
                 bid.status = 'rejected'
+            else:  # pending
+                bid.status = 'pending'
             
+            # Reset notification status when status changes
+            bid.notified = False
             bid.save()
             
-            return Response({'message': f'Bid {action}ed successfully'})
+            return Response({
+                'message': f'Bid {action}ed successfully',
+                'status': bid.status
+            })
             
+        except Bid.DoesNotExist:
+            return Response(
+                {'error': 'Bid not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class BidViewSet(viewsets.ModelViewSet):
+    queryset = Bid.objects.all()
+    serializer_class = BidSerializer
+
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        
+        # Get the user from the email
+        user_email = data.get('email')
+        try:
+            user = CustomUser.objects.get(email=user_email)
+            data['bidder'] = user.id
+        except CustomUser.DoesNotExist:
+            return Response({'error': 'User not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def get_queryset(self):
+        return Bid.objects.all().select_related('property', 'bidder') 
+
+class UserBidsView(APIView):
+    def get(self, request, email):
+        try:
+            bids = Bid.objects.filter(bidder__email=email).select_related('property', 'bidder')
+            serializer = BidSerializer(bids, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class MarkBidNotifiedView(APIView):
+    def post(self, request, bid_id):
+        try:
+            bid = get_object_or_404(Bid, id=bid_id)
+            bid.notified = True
+            bid.save()
+            return Response({'message': 'Bid marked as notified'})
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 

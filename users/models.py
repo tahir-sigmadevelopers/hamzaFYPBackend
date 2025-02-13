@@ -46,9 +46,10 @@ class Bid(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    notified = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ['-amount']
+        ordering = ['-created_at']
 
     def __str__(self):
         return f"Bid of {self.amount} on {self.property}"
