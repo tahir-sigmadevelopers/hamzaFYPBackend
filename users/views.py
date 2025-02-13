@@ -16,6 +16,7 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 import numpy as np
 from decimal import Decimal, InvalidOperation
+from datetime import datetime
 
 try:
     import pandas as pd
@@ -54,8 +55,7 @@ class LoginView(APIView):
         if serializer.is_valid():
             user = serializer.validated_data
             token, created = Token.objects.get_or_create(user=user)
-            user_name = user.username 
-           # Include user details in the response
+            
             return Response({
                 'token': token.key,
                 'user': {
@@ -63,7 +63,8 @@ class LoginView(APIView):
                     'username': user.username,
                     'email': user.email
                 }
-            }, status=status.HTTP_201_CREATED)    
+            }, status=status.HTTP_200_OK)
+            
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserListView(APIView):
@@ -138,10 +139,69 @@ class PropertyDetailView(generics.RetrieveAPIView):
     lookup_field = 'id' 
        
 
-class PropertyUpdateView(generics.UpdateAPIView):
-    queryset = Property.objects.all()
-    serializer_class = PropertySerializer
-    lookup_field = 'id'  # Use the 'id' field to update a specific property
+class PropertyUpdateView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def put(self, request, id):
+        try:
+            property_instance = Property.objects.get(id=id)
+            
+            # Update basic fields
+            property_instance.location = request.data.get('location', property_instance.location)
+            property_instance.address = request.data.get('address', property_instance.address)
+            property_instance.size = request.data.get('size', property_instance.size)
+            property_instance.bedrooms = request.data.get('bedrooms', property_instance.bedrooms)
+            property_instance.bathrooms = request.data.get('bathrooms', property_instance.bathrooms)
+            property_instance.actual_price = request.data.get('actual_price', property_instance.actual_price)
+            property_instance.owner_name = request.data.get('owner_name', property_instance.owner_name)
+            property_instance.description = request.data.get('description', property_instance.description)
+            
+            # Handle date_listed properly
+            if 'date_listed' in request.data:
+                try:
+                    date_str = request.data['date_listed']
+                    # Parse the date string to a datetime object
+                    date_listed = datetime.strptime(date_str, '%Y-%m-%d').date()
+                    property_instance.date_listed = date_listed
+                except ValueError as e:
+                    print("Date parsing error:", str(e))
+                    return Response(
+                        {'error': 'Invalid date format. Use YYYY-MM-DD'}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            property_instance.save()
+
+            # Handle images
+            new_images = request.FILES.getlist('images')
+            if new_images:
+                # Delete existing images
+                PropertyImage.objects.filter(property=property_instance).delete()
+                
+                # Add new images
+                for image in new_images:
+                    PropertyImage.objects.create(
+                        property=property_instance,
+                        image=image
+                    )
+
+            serializer = PropertySerializer(property_instance)
+            return Response({
+                'message': 'Property updated successfully',
+                'property': serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Property.DoesNotExist:
+            return Response(
+                {'error': 'Property not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            print("Error updating property:", str(e))
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 

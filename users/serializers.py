@@ -21,15 +21,20 @@ class SignupSerializer(serializers.ModelSerializer):
         return user
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        user = authenticate(username=data['username'], password=data['password'])
-        print(user)
-        if user and user.is_active:
-            return user
-        raise serializers.ValidationError("Invalid credentials")
+        # Try to get user by email first
+        try:
+            user = CustomUser.objects.get(email=data['email'])
+            # Check password for this user
+            if user and user.check_password(data['password']):
+                return user
+        except CustomUser.DoesNotExist:
+            pass
+        
+        raise serializers.ValidationError("Invalid email or password")
 
 
 
@@ -43,9 +48,16 @@ class LoginSerializer(serializers.Serializer):
 
 
 class PropertyImageSerializer(serializers.ModelSerializer):
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = PropertyImage
-        fields = ['id', 'image']
+        fields = ['id', 'image', 'image_url']
+
+    def get_image_url(self, obj):
+        if obj.image:
+            return obj.image.url
+        return None
 
 class PropertySerializer(serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)

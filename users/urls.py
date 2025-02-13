@@ -12,9 +12,9 @@ urlpatterns = [
     
     # Property URLs
     path('properties-create/', PropertyCreateView.as_view(), name='property-create'),
-    path('property/delete/<int:id>/', PropertyDeleteView.as_view(), name='delete-property'),
-    path('property/update/<int:id>/', PropertyUpdateView.as_view(), name='update-property'),
     path('property/<int:id>/', PropertyDetailView.as_view(), name='property-detail'),
+    path('property/update/<int:id>/', PropertyUpdateView.as_view(), name='property-update'),
+    path('property/delete/<int:id>/', PropertyDeleteView.as_view(), name='delete-property'),
     
     # Bidding URLs
     path('bids/', PlaceBidView.as_view(), name='place-bid'),
