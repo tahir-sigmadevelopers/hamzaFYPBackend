@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 import numpy as np
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
+from django.contrib.auth import get_user_model
 
 try:
     import pandas as pd
@@ -68,13 +69,19 @@ class LoginView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserListView(APIView):
-    
     def get(self, request):
-        users = CustomUser.objects.all()  # Fetch all users
-        user_data = [{"id": user.id, "username": user.username, "email": user.email} for user in users]
-        return Response(user_data, status=status.HTTP_200_OK)
-
-
+        User = get_user_model()
+        users = User.objects.all()
+        user_data = []
+        for user in users:
+            user_data.append({
+                'id': user.id,
+                'email': user.email,
+                'is_staff': user.is_staff,
+                'is_active': user.is_active,
+                'date_joined': user.date_joined
+            })
+        return Response(user_data)
 
 class PropertyCreateView(APIView):
     parser_classes = (MultiPartParser, FormParser)
@@ -560,3 +567,38 @@ class MarkBidNotifiedView(APIView):
             return Response({'message': 'Bid marked as notified'})
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST) 
+
+class UserStatsView(APIView):
+    def get(self, request):
+        User = get_user_model()
+        total_users = User.objects.count()
+        return Response({'total_users': total_users}) 
+
+class UserRoleToggleView(APIView):
+    def post(self, request, user_id):
+        try:
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            # Toggle is_staff status
+            user.is_staff = not user.is_staff
+            user.save()
+            return Response({
+                'message': 'User role updated successfully',
+                'is_staff': user.is_staff
+            })
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400)
+
+class UserDeleteView(APIView):
+    def delete(self, request, user_id):
+        try:
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+            user.delete()
+            return Response({'message': 'User deleted successfully'})
+        except User.DoesNotExist:
+            return Response({'error': 'User not found'}, status=404)
+        except Exception as e:
+            return Response({'error': str(e)}, status=400) 

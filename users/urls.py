@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (SignupView, LoginView, UserListView, PropertyCreateView,
                    PropertyDeleteView, PropertyDetailView, PropertyUpdateView, 
                    PlaceBidView, PropertyBidsView, BidActionView, AllBidsView,
-                   UserBidsView, MarkBidNotifiedView)
+                   UserBidsView, MarkBidNotifiedView, UserStatsView,
+                   UserRoleToggleView, UserDeleteView)
 
 urlpatterns = [
     # Authentication URLs
@@ -23,4 +24,7 @@ urlpatterns = [
     path('bids/<int:bid_id>/<str:action>/', BidActionView.as_view(), name='bid-action'),
     path('bids/user/<str:email>/', UserBidsView.as_view(), name='user-bids'),
     path('bids/<int:bid_id>/mark-notified/', MarkBidNotifiedView.as_view(), name='mark-bid-notified'),
+    path('users/stats/', UserStatsView.as_view(), name='user-stats'),
+    path('users/<int:user_id>/toggle-role/', UserRoleToggleView.as_view(), name='user-toggle-role'),
+    path('users/<int:user_id>/delete/', UserDeleteView.as_view(), name='user-delete'),
 ]
