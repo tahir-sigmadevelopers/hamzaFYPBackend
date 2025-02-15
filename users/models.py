@@ -7,10 +7,27 @@ from django.utils import timezone
 
 
 class CustomUser(AbstractUser):
-    # username = models.TextField(max_length=255)
-    email = models.CharField(max_length=255)
+    # Add any custom fields you need
+    email = models.EmailField(unique=True)
+    
+    # Override the username field to allow spaces
+    username = models.CharField(
+        max_length=150,
+        unique=True,
+        help_text='Required. 150 characters or fewer. Letters and spaces only.',
+        error_messages={
+            'unique': "A user with that username already exists.",
+        },
+    )
+
     password = models.CharField(max_length=255)
     pass
+
+    def save(self, *args, **kwargs):
+        # Ensure username is in title case
+        if self.username:
+            self.username = self.username.title()
+        super().save(*args, **kwargs)
 
 
 

@@ -1,20 +1,30 @@
 from rest_framework import serializers
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
-from .models import CustomUser, Property , PropertyImage, Bid
+from .models import CustomUser, Property, PropertyImage, Bid
 from decimal import Decimal
 from decimal import InvalidOperation
+import re
 
+User = get_user_model()
 
-class SignupSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomUser
-        fields = ['username', 'email', 'password']
+        model = User
+        fields = ('id', 'username', 'email', 'password', 'is_staff')
         extra_kwargs = {'password': {'write_only': True}}
 
+    def validate_username(self, value):
+        # Allow letters, spaces, and proper capitalization
+        if not re.match("^[a-zA-Z\s]+$", value):
+            raise serializers.ValidationError(
+                "Username can only contain letters and spaces"
+            )
+        return value
+
     def create(self, validated_data):
-        user = CustomUser.objects.create_user(
-            username=validated_data['username'],
+        user = User.objects.create_user(
+            username=validated_data['username'].title(),  # Capitalize each word
             email=validated_data['email'],
             password=validated_data['password']
         )
@@ -25,11 +35,11 @@ class LoginSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        # Try to get user by email first
         try:
             user = CustomUser.objects.get(email=data['email'])
-            # Check password for this user
             if user and user.check_password(data['password']):
+                # Make sure the user object has all required fields
+                user.refresh_from_db()  # Refresh the user object from the database
                 return user
         except CustomUser.DoesNotExist:
             pass

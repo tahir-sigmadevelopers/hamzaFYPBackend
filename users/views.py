@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status, generics, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
-from .serializers import SignupSerializer, LoginSerializer, PropertySerializer, BidSerializer  
+from .serializers import UserSerializer, LoginSerializer, PropertySerializer, BidSerializer
 from .models import CustomUser, Property, PropertyImage, Bid
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.generics import DestroyAPIView
@@ -33,22 +33,31 @@ def hello_world(request):
 
 class SignupView(APIView):
     def post(self, request):
-        serializer = SignupSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            token, created = Token.objects.get_or_create(user=user)
-            
-            # Include user details in the response
-            return Response({
-                'token': token.key,
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email
-                }
-            }, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            # Convert username to title case (capitalize first letter of each word)
+            if 'username' in request.data:
+                request.data['username'] = request.data['username'].title()
+
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                token, created = Token.objects.get_or_create(user=user)
+                
+                return Response({
+                    'token': token.key,
+                    'user': {
+                        'id': user.id,
+                        'username': user.username,
+                        'email': user.email,
+                        'is_staff': user.is_staff
+                    }
+                }, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 class LoginView(APIView):
     def post(self, request):
@@ -62,7 +71,8 @@ class LoginView(APIView):
                 'user': {
                     'id': user.id,
                     'username': user.username,
-                    'email': user.email
+                    'email': user.email,
+                    'is_staff': user.is_staff
                 }
             }, status=status.HTTP_200_OK)
             
